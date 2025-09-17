@@ -1,5 +1,6 @@
 package com.app.socialmedia.repository;
 
+import com.app.socialmedia.DTOs.LikeResponse;
 import com.app.socialmedia.entities.Like;
 import org.springframework.data.jpa.repository.JpaRepository;
 

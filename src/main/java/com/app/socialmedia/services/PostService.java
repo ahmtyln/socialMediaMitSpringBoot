@@ -1,12 +1,17 @@
 package com.app.socialmedia.services;
 
+import com.app.socialmedia.DTOs.LikeResponse;
 import com.app.socialmedia.DTOs.PostCreateRequest;
 import com.app.socialmedia.DTOs.PostResponse;
 import com.app.socialmedia.DTOs.PostUpdateRequest;
+import com.app.socialmedia.entities.Like;
 import com.app.socialmedia.entities.Post;
 import com.app.socialmedia.entities.User;
+import com.app.socialmedia.repository.LikeRepository;
 import com.app.socialmedia.repository.PostRepository;
 import com.app.socialmedia.repository.UserRepository;
+import lombok.Data;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -18,18 +23,31 @@ public class PostService {
 
     private PostRepository postRepository;
     private UserService userService;
+    private LikeService likeService;
 
     public PostService(PostRepository postRepository, UserService userService){
         this.postRepository=postRepository;
         this.userService = userService;
     }
 
+    @Autowired
+    public void setLikeService(LikeService likeService) {
+        this.likeService = likeService;
+    }
+
+
     public List<PostResponse> getAllPosts(Optional<Long> userId){
         List<Post> list;
         if(userId.isPresent()){
             list = postRepository.findByUserId(userId.get());
-        }else {list = postRepository.findAll();}
-        return list.stream().map(p -> new PostResponse(p)).collect(Collectors.toList());
+        }else {
+            list = postRepository.findAll();
+        }
+
+        return list.stream().map(p -> {
+            List<LikeResponse> likes= likeService.getAllLikes(Optional.empty(),Optional.of(p.getId()));
+            return new PostResponse(p,likes);
+        }).collect(Collectors.toList());
     }
 
     public Post getOnePostById(Long postId){
@@ -40,6 +58,7 @@ public class PostService {
         User user = userService.getOneUser(newPostRequest.getUserId());
         if(user==null) return null;
         Post post = new Post();
+        post.setId(newPostRequest.getId());
         post.setUser(user);
         post.setText(newPostRequest.getText());
         post.setTitle(newPostRequest.getTitle());

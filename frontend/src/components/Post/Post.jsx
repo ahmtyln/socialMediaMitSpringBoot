@@ -1,4 +1,4 @@
-import { useState } from "react";
+import {useEffect, useRef, useState} from "react";
 import {
     Card,
     CardHeader,
@@ -12,23 +12,94 @@ import {
 } from "@mui/material";
 import FavoriteIcon from "@mui/icons-material/Favorite";
 import CommentIcon from '@mui/icons-material/Comment';
-import ShareIcon from "@mui/icons-material/Share";
-import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import MoreVertIcon from "@mui/icons-material/MoreVert";
-import clsx from "clsx";
 import {Link as RouterLink} from "react-router-dom";
+import Comment from "../Comment/Comment.jsx"
+import axios from "axios";
+import CommentForm from "../Comment/CommentForm.jsx";
 
-function Post({ title, text, userName, userId }) {
+function Post({ title, text, userName, userId,postId,likes}) {
     const [expanded, setExpanded] = useState(false);
-    const [liked, setLiked] = useState(false)
+    const [isLiked, setIsLiked] = useState(false)
+    const [commentList, setCommentList] = useState([]);
+    const [error, setError] = useState(null);
+    const [isLoaded, setIsLoaded] = useState(false);
+    const isInitialMount = useRef(true);
+    const [likeCount, setLikeCount] = useState(likes.length)
+    const [likeId, setLikeId] = useState(null);
+
+
+
+    const refreshComments = () =>{
+        axios.get("http://localhost:8080/comments?postId="+postId, {
+            auth: { username: "admin", password: "123" }
+        })
+            .then(response => {
+                setIsLoaded(true);
+                setCommentList(response.data);
+            })
+            .catch((err) => {
+                setError(err);
+            });
+    }
+
+    const saveLikeToDatabase = async () =>{
+        try {
+            const response = await axios.post("http://localhost:8080/likes",{
+                userId:userId,
+                postId: postId
+            });
+            console.log(response)
+            setLikeId(response.data.id);
+        }catch (error) {
+            console.error("Error of Sending:", error);
+        }
+    }
+
+    const deleteLikeFromDatabase = async () =>{
+        try {
+            await axios.delete("http://localhost:8080/likes/"+likeId)
+            setLikeId(null);
+        }catch (error) {
+            console.error("Error of Sending:", error);
+        }
+    }
+
+
+    useEffect(() => {
+        if(isInitialMount.current){
+            isInitialMount.current = false;
+        }else{
+            refreshComments()
+        }
+    }, [commentList]);
+
+    useEffect(() =>{checkLikes()},[])
 
     const handleExpandClick = () => {
         setExpanded(!expanded);
+        refreshComments();
     };
 
     const handleLike = () =>{
-        setLiked(!liked);
+        setIsLiked(!isLiked);
+        if(!isLiked){
+            setLikeCount(likeCount+1);
+            saveLikeToDatabase();
+        }else{
+            setLikeCount(likeCount-1);
+            deleteLikeFromDatabase();
+        }
     }
+
+    const checkLikes = () =>{
+        let likeControl = likes.find(like => like.userId === userId);
+        if(likeControl){
+            setIsLiked(true);
+            setLikeId(likeControl.id);
+        }
+    }
+
+
 
     return (
         <Box sx={{
@@ -76,8 +147,9 @@ function Post({ title, text, userName, userId }) {
 
                 <CardActions disableSpacing>
                     <IconButton onClick={handleLike} aria-label="add to favorites">
-                        <FavoriteIcon sx={liked ? {color:'red'} : null} />
+                        <FavoriteIcon sx={isLiked ? {color:'red'} : null} />
                     </IconButton>
+                    {likeCount}
 
                     <IconButton
                         onClick={handleExpandClick}
@@ -92,9 +164,12 @@ function Post({ title, text, userName, userId }) {
                 </CardActions>
 
                 <Collapse in={expanded} timeout="auto" unmountOnExit>
-                    <CardContent>
-
-                    </CardContent>
+                    <Box  sx={{ bgcolor: '#F5F5F5', color:'#292929'}} >
+                        {error ? "error" : isLoaded ? commentList.map(comment => (
+                            <Comment userId = {1} userName = {"USER"} text = {comment.text}/>
+                        )) : "Loading"}
+                        <CommentForm userId = {1} userName = {"USER"} postId = {postId} />
+                    </Box>
                 </Collapse>
             </Card>
         </Box>

@@ -1,57 +1,69 @@
 package com.app.socialmedia.services;
 
 import com.app.socialmedia.DTOs.LikeCreateRequest;
+import com.app.socialmedia.DTOs.LikeResponse;
 import com.app.socialmedia.entities.Like;
 import com.app.socialmedia.entities.Post;
 import com.app.socialmedia.entities.User;
 import com.app.socialmedia.repository.LikeRepository;
+import com.app.socialmedia.repository.PostRepository;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 public class LikeService {
-    LikeRepository likeRepository;
-    UserService userService;
-    PostService postService;
 
-    public LikeService(LikeRepository likeRepository, UserService userService, PostService postService){
+    private final LikeRepository likeRepository;
+    private final UserService userService;
+    private final PostRepository postRepository;
+
+    public LikeService(LikeRepository likeRepository,
+                       UserService userService,
+                       PostRepository postRepository) {
         this.likeRepository = likeRepository;
         this.userService = userService;
-        this.postService = postService;
+        this.postRepository = postRepository;
     }
 
-    public List<Like> getAllLikes(Optional<Long> userId,Optional<Long> postId){
-        if (userId.isPresent()) {
-            return likeRepository.findByUserId(userId.get());
+    public List<LikeResponse> getAllLikes(Optional<Long> userId, Optional<Long> postId) {
+        List<Like> list;
+
+        if (userId.isPresent() && postId.isPresent()) {
+            list = likeRepository.findByUserIdAndPostId(userId.get(), postId.get());
+        } else if (userId.isPresent()) {
+            list = likeRepository.findByUserId(userId.get());
         } else if (postId.isPresent()) {
-            return likeRepository.findByPostId(postId.get());
-        } else if (userId.isPresent() && postId.isPresent()) {
-            return likeRepository.findByUserIdAndPostId(userId.get(), postId.get());
+            list = likeRepository.findByPostId(postId.get());
         } else {
-            return likeRepository.findAll();
+            list = likeRepository.findAll();
         }
+
+        return list.stream().map(like -> new LikeResponse(like)).collect(Collectors.toList());
     }
 
-    public Like getOneLikeWithId(Long likeId){
+    public Like getOneLikeWithId(Long likeId) {
         return likeRepository.findById(likeId).orElse(null);
     }
 
-    public Like createOneLike(LikeCreateRequest request){
-        if(request != null){
-            User user = userService.getOneUser(request.getUserId());
-            Post post = postService.getOnePostById(request.getPostId());
-            Like like = new Like();
-            like.setId(request.getId());
-            like.setUser(user);
-            like.setPost(post);
-            return likeRepository.save(like);
-        }else return null;
+    public Like createOneLike(LikeCreateRequest request) {
+        if (request == null) return null;
+
+        User user = userService.getOneUser(request.getUserId());
+        Post post = postRepository.findById(request.getPostId()).orElse(null);
+
+        if (user == null || post == null) return null;
+
+        Like like = new Like();
+        like.setId(request.getId());
+        like.setUser(user);
+        like.setPost(post);
+        return likeRepository.save(like);
     }
-    public void deleteOneLikeWithId(Long likeId){
+
+    public void deleteOneLikeWithId(Long likeId) {
         likeRepository.deleteById(likeId);
     }
-
-
 }

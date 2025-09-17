@@ -11,13 +11,11 @@ function Home(){
     const [isLoaded, setIsLoaded] = useState(false);
     const [postList, setPostList] = useState([]);
 
-    useEffect(() => {
+    const refreshPost = () =>{
         axios.get("http://localhost:8080/posts", {
             auth: { username: "admin", password: "123" }
         })
             .then(response => {
-                console.log("API response (typeof):", typeof response.data);
-                console.log("API response (data):", response.data);
                 setIsLoaded(true);
                 setPostList(response.data);
             })
@@ -25,7 +23,13 @@ function Home(){
                 setIsLoaded(true);
                 setError(err);
             });
-    }, []);
+    }
+
+
+
+    useEffect(() => {
+        refreshPost()
+    }, [postList]);
 
 
     if(error){
@@ -35,9 +39,9 @@ function Home(){
     }else{
         return (
             <Box sx={{ bgcolor: '#f0f5ff', height: '100vh'}} >
-                <PostForm userId={1} userName={"hjbhjb"} title = {"title"} text = {"text"}/>
+                <PostForm userId={1} userName={"hjbhjb"} refreshPost = {refreshPost} />
                {postList.map(post => (
-                   <Post userId={post.userId} userName={post.userName} title = {post.title} text = {post.text} ></Post>
+                   <Post likes={post.postLikes} postId = {post.id} userId={post.userId} userName={post.userName} title = {post.title} text = {post.text} ></Post>
                ))}
             </Box>
         )

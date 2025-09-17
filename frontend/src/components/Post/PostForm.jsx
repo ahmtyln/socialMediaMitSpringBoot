@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import {
     Card,
     CardHeader,
@@ -8,31 +8,47 @@ import {
     Avatar,
     Collapse,
     Typography,
-    Box, Link, OutlinedInput, Button,
+    Box, Link, OutlinedInput, Button, Stack, Alert, Snackbar,
 } from "@mui/material";
 import {Link as RouterLink} from "react-router-dom";
 import axios from "axios";
 
-function PostForm({ userName, userId }) {
+
+
+function PostForm({ userName, userId, refreshPost}) {
     const [text, setText] = useState("");
     const [title, setTitle] = useState("");
+    const [isSent, setIsSent] = useState(false)
 
 
     const handleSubmit = async () => {
+
         try {
-            const response = await axios.post("http://localhost:8080/posts",{
+            await axios.post("http://localhost:8080/posts",{
                 title:title,
                 text:text,
                 userId: userId
             })
-            console.log("POST response status:", response.status);
-            console.log("Backend cevabı:", response.data);
-            alert("Başarıyla gönderildi!");
+
         }catch (error) {
-            console.error("Gönderim hatası:", error);
+            console.error("Error of Sending:", error);
         }
 
+        setText("");
+        setTitle("");
+        setIsSent(true);
+        refreshPost();
+
     };
+
+    const handleClose = (event, reason) => {
+        if (reason === 'clickaway') {
+            return;
+        }
+
+        setIsSent(false);
+    };
+
 
     const handleTitle = (value) =>{
         setTitle(value)
@@ -49,6 +65,15 @@ function PostForm({ userName, userId }) {
             gap: 2,
             p: 2,
         }} >
+            <Snackbar  open={isSent}
+                       autoHideDuration={2000}
+                       onClose={handleClose}
+                       message="Note archived"
+                        >
+                <Alert variant="filled" severity="success" onClose={handleClose}>
+                    Your post is sent!
+                </Alert>
+            </Snackbar>
             <Card  sx={{
                 width: {
                     xs: "100%",
@@ -81,6 +106,7 @@ function PostForm({ userName, userId }) {
                         id="title-input"
                         multiline
                         placeholder="Title"
+                        value={title}
                         inputProps={{ maxLength: 25 }}
                         fullWidth
                         onChange={(i) => handleTitle(i.target.value)}
@@ -94,6 +120,7 @@ function PostForm({ userName, userId }) {
                         id="text-input"
                         multiline
                         placeholder="Text"
+                        value={text}
                         inputProps= {{maxLength:250}}
                         fullWidth
                         onChange={(i) => handleText(i.target.value)}
